@@ -1,26 +1,31 @@
 <?php
 require_once 'student.php';
 require_once 'teacher.php';
-$name = "";
-$email = "";
-$password = "";
-$sign = "";
 header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$data = [];
+    if (isset($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+        $json_data = file_get_contents('php://input');
+        if (!$json_data) {
+            echo json_encode(array('success'=>0 , 'message'=> 'Empty request body.'));
+            exit;
+        }
+        $data = json_encode($json_data, true);
+        if (!$data) {
+            echo json_encode(array('success' => 0, 'message' => 'Invalid JSON data.'));
+            exit;
+        }
 
+    } else {
+        $data = $_POST;
+    }
+    $name = isset($data['name']) ? $data['name'] : "";
+    $email = isset($data['email']) ? $data['email'] : "";
+    $password = isset($data['password']) ? $data['password'] : "";
+    $sign = isset($data['sign']) ? $data['sign'] : "";
 }else{
-if (isset($_POST['name'])) {
-    $name = $_POST['name'];
+    echo json_encode(array('success'=> 0, 'message' => 'Invalid request method'));
 }
-if (isset($_POST['email'])) {
-    $email = $_POST['email'];
-}
-if (isset($_POST['password'])) {
-    $password = $_POST['password'];
-}
-if (isset($_POST['sign'])) {
-    $sign = $_POST['sign'];
-}}
 //echo "<h1>$name, $email, $password, $sign</h1>";
 if (!empty($email) && !empty($name) && !empty($password)) {
 
@@ -47,5 +52,6 @@ if (!empty($email) && !empty($name) && !empty($password)) {
        echo json_encode($json_teacher_result);
     }
 } else {
-
+    echo json_encode(array('success' => 0, 'message' => 'Missing required fields.'));
+    exit;
 }
