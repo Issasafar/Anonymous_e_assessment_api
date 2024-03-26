@@ -12,7 +12,7 @@ class Teacher extends User
     {
         $isExisting = $this->isEmailExist($email);
         if ($isExisting) {
-            $json['success'] = 0;
+            $json['success'] = false;
             $json['message'] = "Error in registering. Probably the username/email already exists";
         } else {
             $isValid = $this->isValidEmail($email);
@@ -21,15 +21,15 @@ class Teacher extends User
                 $inserted = mysqli_query($this->db->getDb(), $query);
                 if ($inserted == 1) {
 
-                    $json['success'] = 1;
+                    $json['success'] = true;
                     $json['message'] = "Successfully registered the user";
                 } else {
-                    $json['success'] = 0;
+                    $json['success'] = false;
                     $json['message'] = "Error in registering. Probably the username/email already exists";
                 }
                 mysqli_close($this->db->getDb());
             } else {
-                $json['success'] = 0;
+                $json['success'] = false;
                 $json['message'] = "Error in registering. Email Address is not valid";
             }
         }

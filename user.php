@@ -10,14 +10,25 @@ class User
     {
         $this->db = new DbConnect();
     }
+
+    public function checkForEntry($email, $name)
+    {
+
+            $query = "SELECT * FROM " . $this->db_table . " WHERE email = '$email' AND name = '$name'";
+            $result = mysqli_query($this->db->getDb(), $query);
+            mysqli_close($this->db->getDb());
+            if (mysqli_num_rows($result) > 0) {
+                return true;
+            }
+            return false;
+
+   }
     public function isLoginExist($email, $password)
     {
-        $query = "select * from " . $this->db_table . " where email = '$email' AND password = '$password' Limit 1";
+        $query = "SELECT * FROM " . $this->db_table . " WHERE email = '$email' AND password = '$password' LIMIT 1";
         $result = mysqli_query($this->db->getDb(), $query);
         if (mysqli_num_rows($result) > 0) {
-//            while($row = $result->fetch_array()) {
-//                echo $row[0] . ":" . $row[1] . ":". $row[2] .":". $row[3] .":". $row[4] ."\n";
-//            }
+
             $row = $result->fetch_array();
             $this->loginResult = array();
             $this->loginResult['userId'] = $row[0];
@@ -53,14 +64,46 @@ class User
 
         $canStudentLogin = $this->isLoginExist($email, $password);
         if ($canStudentLogin) {
-            $this->loginResult['success'] = 1;
+            $this->loginResult['success'] = true;
             $this->loginResult['message'] = "Successfully logged in";
 
         } else {
-            $this->loginResult['success'] = 0;
-            $this->loginResult['message'] = "Incorrect details ".$email.$password;
+            $this->loginResult['success'] = false;
+            $this->loginResult['message'] = "Incorrect details ";
         }
 
         return $this->loginResult;
+    }
+
+    public function resetPassword($email, $newPassword)
+    {
+
+        $hashedNewPassword = md5($newPassword);
+        $query = "UPDATE $this->db_table SET `password` = '$hashedNewPassword' WHERE `email` = '$email'";
+
+        try{
+
+        $updated = mysqli_query($this->db->getDb(),$query);
+
+        }
+        catch (Exception $e ){
+
+            echo json_encode(array(
+                'success'=>false,
+                'message'=>$e
+            ));
+
+    }
+        if ($updated) {
+            echo json_encode(array(
+                'success' =>true,
+                'message' => 'password has been reset'
+            ));
+        } else {
+            echo json_encode(array(
+                'success' => false,
+                'message'=>'Error in resetting password'
+            ));
+        }
     }
 }
