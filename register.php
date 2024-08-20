@@ -9,7 +9,6 @@ $contentType = $_SERVER['CONTENT_TYPE'];
     
     if ((isset($_SERVER['CONTENT_TYPE'])) && (strpos($contentType, 'application/json') !== false)) {
 
-
         $json_data = file_get_contents('php://input');
         if (!$json_data) {
             echo json_encode(array('success'=>false , 'message'=> 'Empty request body.'));
@@ -28,10 +27,10 @@ $contentType = $_SERVER['CONTENT_TYPE'];
 
         $data = $_POST;
     }
-    $name = isset($data['name']) ? $data['name'] : "";
-    $email = isset($data['email']) ? $data['email'] : "";
-    $password = isset($data['password']) ? $data['password'] : "";
-    $sign = isset($data['sign']) ? $data['sign'] : "";
+    $name = $data['name'] ?? "";
+    $email = $data['email'] ?? "";
+    $password = $data['password'] ?? "";
+    $sign = $data['sign'] ?? "";
 }else{
     echo json_encode(array('success'=> false, 'message' => 'Invalid request method'));
 }

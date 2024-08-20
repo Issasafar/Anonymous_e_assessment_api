@@ -20,7 +20,6 @@ class Student extends User
                 $query = "insert into " . $this->db_table . " (name, email, password, sign) values ('$name','$email','$password','$sign')";
                 $inserted = mysqli_query($this->db->getDb(), $query);
                 if ($inserted == 1) {
-
                     $json['success'] = true;
                     $json['message'] = "Successfully registered the user";
                 } else {

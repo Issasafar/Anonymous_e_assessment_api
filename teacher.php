@@ -20,7 +20,6 @@ class Teacher extends User
                 $query = "insert into " . $this->db_table . " (name, email, password) values ('$name','$email','$password')";
                 $inserted = mysqli_query($this->db->getDb(), $query);
                 if ($inserted == 1) {
-
                     $json['success'] = true;
                     $json['message'] = "Successfully registered the user";
                 } else {
