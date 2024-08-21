@@ -11,15 +11,157 @@ $GLOBALS['dbConnect'] = new DbConnect();
 
 class Course implements JsonSerializable
 {
-    public static function fetchQuestions($test_id)
+    public static function postResult($result)
     {
         $db = $GLOBALS['dbConnect']->getDb();
-        $longQuestionsQuery = 'SELECT * FROM  ' . $GLOBALS['longAnswerQuestionTable'] . " WHERE t_id = " . $test_id;
-        $multiChoiceQuestionsQuery = 'SELECT * FROM  ' . $GLOBALS['multipleChoiceQuestionTable'] . " WHERE t_id = " . $test_id;
-        $longResult = mysqli_query($db, $longQuestionsQuery);
-        $mutliResutl = mysqli_query($db, $multiChoiceQuestionsQuery);
+        $testId = $result['t_id'];
+        $ownerId = $result['owner_id'];
+        $score = $result['score'];
+        $query = "INSERT INTO " . $GLOBALS['resultTable'] . " (owner_id, t_id, score) VALUES ('$ownerId','$testId','$score')";
+        $inserted = mysqli_query($db, $query);
+        if ($inserted) {
+            return new CourseServiceResponse(true, "successfully posted a result", null);
+        } else {
+            return new CourseServiceResponse(false, "error while posting the result", null);
+        }
 
-        return $test_id;
+    }
+
+    public static function getResults($testId)
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        $query = "SELECT * FROM " . $GLOBALS['resultTable'] . " WHERE t_id = " . $testId;
+        $result = mysqli_query($db, $query);
+        mysqli_close($db);
+        if ($result->num_rows > 0) {
+            $results = [];
+            while ($row = $result->fetch_assoc()) {
+                $results[] = array(
+                    'r_id' => $row['r_id'],
+                    'owner_id' => $row['owner_id'],
+                    't_id' => $row['t_id'],
+                    'score' => $row['score']
+                );
+            }
+            return new CourseServiceResponse(true, "fetched results", $results);
+        } else {
+            return new CourseServiceResponse(false, "no results available", null);
+        }
+    }
+
+    public static function postAnswers($answers)
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        foreach ($answers as $answer) {
+            $ownerId = $answer['owner_id'];
+            $description = $answer['description'];
+            $aOrder = $answer['a_order'];
+            $qId = $answer['q_id'];
+            $tId = $answer['t_id'];
+            if ($answer['a_type'] === "long") {
+                $query = "INSERT INTO " . $GLOBALS['longAnswerTable'] . " (owner_id, t_id, q_id, description, a_order) VALUES ( '$ownerId', '$tId', '$qId', '$description', '$aOrder')";
+            } else {
+                $query = "INSERT INTO " . $GLOBALS['multipleChoiceAnswerTable'] . " (owner_id, t_id, q_id, description, a_order) VALUES ( '$ownerId', '$tId', '$qId', '$description', '$aOrder')";
+            }
+            mysqli_query($db, $query);
+        }
+        mysqli_close($db);
+        return new CourseServiceResponse(true, "successfully posted answers", null);
+
+    }
+
+    public static function getAnswers($testId, $ownerId)
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        $queryL = "SELECT * FROM " . $GLOBALS['longAnswerTable'] . " WHERE t_id = " . $testId . " AND owner_id = " . $ownerId;
+        $queryM = "SELECT * FROM " . $GLOBALS['multipleChoiceAnswerTable'] . " WHERE t_id = " . $testId . " AND owner_id = " . $ownerId;
+        $longResult = mysqli_query($db, $queryL);
+        $multiResult = mysqli_query($db, $queryM);
+        mysqli_close($db);
+        $answers = [];
+        if ($longResult->num_rows > 0) {
+            while ($row = $longResult->fetch_assoc()) {
+                $answers[] = array(
+                    'a_id' => $row['a_id'],
+                    'description' => $row['description'],
+                    'owner_id' => $row['owner_id'],
+                    'a_order' => $row['a_order'],
+                    'a_type' => "long",
+                    'q_id' => $row['q_id'],
+                    't_id' => $row['t_id']
+                );
+            }
+        }
+        if ($multiResult->num_rows > 0) {
+            while ($row = $longResult->fetch_assoc()) {
+                $answers[] = array(
+                    'a_id' => $row['a_id'],
+                    'description' => $row['description'],
+                    'owner_id' => $row['owner_id'],
+                    'a_order' => $row['a_order'],
+                    'a_type' => 'multi',
+                    'q_id' => $row['q_id'],
+                    't_id' => $row['t_id']
+                );
+            }
+        }
+        if (isset($answers)) {
+            usort($answers, function ($a, $b) {
+                return $a['a_order'] <=> $b['a_order'];
+            });
+            return new CourseServiceResponse(true, "successfully fetched answers", $answers);
+        } else {
+            return new CourseServiceResponse(false, "error while fetching answers", null);
+        }
+    }
+
+    public static function fetchQuestions($testId, $ownerId): CourseServiceResponse
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        if (isset($testId) and !isset($ownerId)) {
+            $longQuestionsQuery = "SELECT * FROM  " . $GLOBALS['longAnswerQuestionTable'] . " WHERE t_id = " . $testId;
+            $multiChoiceQuestionsQuery = "SELECT * FROM  " . $GLOBALS['multipleChoiceQuestionTable'] . " WHERE t_id = " . $testId;
+        } elseif (isset($ownerId)) {
+            $longQuestionsQuery = "SELECT * FROM  " . $GLOBALS['longAnswerQuestionTable'] . " WHERE owner_id = " . $ownerId;
+            $multiChoiceQuestionsQuery = "SELECT * FROM  " . $GLOBALS['multipleChoiceQuestionTable'] . " WHERE owner_id = " . $ownerId;
+        }
+        $longResult = mysqli_query($db, $longQuestionsQuery);
+        $multiResult = mysqli_query($db, $multiChoiceQuestionsQuery);
+        mysqli_close($db);
+        $questions = [];
+        if ($longResult->num_rows > 0) {
+            while ($row = $longResult->fetch_assoc()) {
+                $temp = new Question();
+                $temp->setTId($row['t_id']);
+                $temp->setQId($row['q_id']);
+                $temp->setDescription($row['description']);
+                $temp->setSolution($row['solution']);
+                $temp->setQOrder($row['q_order']);
+                $temp->setLongQuestion(true);
+                $questions[] = $temp;
+            }
+        }
+        if ($multiResult->num_rows > 0) {
+            while ($row = $multiResult->fetch_assoc()) {
+                $temp = new Question();
+                $temp->setTId($row['t_id']);
+                $temp->setQId($row['q_id']);
+                $temp->setDescription($row['description']);
+                $temp->setChoices(array($row['choice1'], $row['choice2'], $row['choice3']));
+                $temp->setSolution($row['solution']);
+                $temp->setQOrder($row['q_order']);
+                $temp->setLongQuestion(true);
+                $questions[] = $temp;
+            }
+        }
+        usort($questions, function ($a, $b) {
+            return $a->getQOrder() <=> $b->getQOrder();
+        });
+        if (isset($questions)) {
+            return new CourseServiceResponse(true, "successfully fetched questions", $questions);
+        } else {
+            return new CourseServiceResponse(false, "error happened while fetching questions", null);
+        }
     }
 
     public static function getAvailableCourses()
@@ -39,10 +181,8 @@ class Course implements JsonSerializable
             }
             return new CourseServiceResponse(true, "fetched courses successfully", $courses);
         } else {
-
-
+            return new CourseServiceResponse(false, "error happened while getting courses", null);
         }
-
     }
 
     /**
@@ -61,21 +201,6 @@ class Course implements JsonSerializable
         $this->questions = $questions;
     }
 
-    /**
-     * @return array
-     */
-    public function getAnswers(): array
-    {
-        return $this->answers;
-    }
-
-    /**
-     * @param array $answers
-     */
-    public function setAnswers($answers)
-    {
-        $this->answers = $answers;
-    }
 
     /**
      * @return mixed
@@ -126,7 +251,6 @@ class Course implements JsonSerializable
     }
 
     private $questions = [];
-    private $answers = [];
     private $t_id;
     private $owner_id;
     private $description;
@@ -195,28 +319,19 @@ class Course implements JsonSerializable
                 $course->questions[] = $question;
             }
         }
-        if (isset($data['answers'])) {
-            foreach ($data['answers'] as $answerData) {
-                $answer = new Answer();
-                $answer->setAId($answerData['a_id']);
-                $answer->setDescription($answerData['description']);
-                $answer->setOwnerId($answerData['owner_id']);
-                $answer->setAOrder($answerData['a_order']);
-                $course->answers[] = $answer;
-            }
-        }
+
         return $course;
 
     }
 
     public function jsonSerialize(): array
     {
-       return [
-           't_id'=>$this->t_id,
-           'owner_id'=>$this->owner_id,
-           'description'=>$this->description,
-           'questions'=>$this->questions,
-       ];
+        return [
+            't_id' => $this->t_id,
+            'owner_id' => $this->owner_id,
+            'description' => $this->description,
+            'questions' => $this->questions,
+        ];
     }
 }
 
@@ -360,78 +475,4 @@ class Question implements JsonSerializable
         ];
     }
 }
-
-class Answer
-{
-    /**
-     * @return mixed
-     */
-    public function getAId()
-    {
-        return $this->a_id;
-    }
-
-    /**
-     * @param mixed $a_id
-     */
-    public function setAId($a_id)
-    {
-        $this->a_id = $a_id;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getDescription()
-    {
-        return $this->description;
-    }
-
-    /**
-     * @param mixed $description
-     */
-    public function setDescription($description)
-    {
-        $this->description = $description;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getOwnerId()
-    {
-        return $this->owner_id;
-    }
-
-    /**
-     * @param mixed $owner_id
-     */
-    public function setOwnerId($owner_id)
-    {
-        $this->owner_id = $owner_id;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getAOrder()
-    {
-        return $this->a_order;
-    }
-
-    /**
-     * @param mixed $a_order
-     */
-    public function setAOrder($a_order)
-    {
-        $this->a_order = $a_order;
-    }
-
-    private $a_id;
-    private $description;
-    private $owner_id;
-    private $a_order;
-
-}
-
 

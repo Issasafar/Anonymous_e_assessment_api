@@ -3,63 +3,111 @@ Content-Type: application/json
 
 {
   "action": "CREATE_TEST",
-  "data":
-  {
-  "t_id": 1,
-  "owner_id": 1,
-  "description": "programming course",
-  "questions": [
-    {
-      "solution": "2",
-      "q_id": 1,
-      "t_id": 1,
-      "description": "what is 2!",
-      "q_order": 1
-    },
-    {
-      "solution": "A",
-      "choices": [
-        "java",
-        "kotlin",
-        "python"
-      ],
-      "q_id": 1,
-      "t_id": 1,
-      "description": "which is best",
-      "q_order": 2
-    }
-  ],
-  "answers": [
-    {
-      "a_id": 1,
-      "description": "9",
-      "owner_id": 1,
-      "a_order": 1
-    },
-    {
-      "a_id": 2,
-      "description": "python",
-      "owner_id": 1,
-      "a_order": 2
-    }
-  ]
+  "data": {
+    "t_id": 1,
+    "owner_id": 2,
+    "description": "programming course",
+    "questions": [
+      {
+        "solution": "2",
+        "q_id": 1,
+        "t_id": 1,
+        "description": "what is 2!",
+        "q_order": 1
+      },
+      {
+        "solution": "A",
+        "choices": [
+          "java",
+          "kotlin",
+          "python"
+        ],
+        "q_id": 1,
+        "t_id": 1,
+        "description": "which is best",
+        "q_order": 2
+      }
+    ]
+  }
 }
-}
+
 ###
 GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
 Content-Type: application/json
 
 {
-"action": "GET_COURSES"
+  "action": "GET_COURSES"
 }
+
 ###
 GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
 Content-Type: application/json
 
 {
   "action": "GET_QUESTIONS",
+  "data": {
+    "test_id": 1,
+    "owner_id": 2
+  }
+}
+
+###
+GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "GET_RESULTS",
+  "data": {
+    "test_id": 1
+  }
+}
+
+###
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "POST_ANSWERS",
   "data":
-  {
-    "testId": 1
+   [
+    {
+      "t_id": 1,
+      "q_id": 1,
+      "description": "9",
+      "owner_id": 1,
+      "a_order": 1,
+      "a_type": "mutli"
+    },
+    {
+      "t_id": 1,
+      "q_id": 1,
+      "description": "python",
+      "owner_id": 1,
+      "a_order": 2,
+      "a_type": "long"
+    }
+  ]
+}
+###
+GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "GET_ANSWERS",
+  "data": {
+    "t_id": 1,
+    "owner_id": 1
+  }
+}
+###
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "POST_RESULT",
+  "data": {
+    "owner_id": 1,
+    "t_id": 1,
+    "score": 90
   }
 }
