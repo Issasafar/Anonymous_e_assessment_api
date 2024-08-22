@@ -7,10 +7,50 @@ $GLOBALS['longAnswerTable'] = "longAnswerAnswers";
 $GLOBALS['multipleChoiceAnswerTable'] = "multipleChoiceAnswers";
 $GLOBALS['resultTable'] = "results";
 $GLOBALS['testsTable'] = "tests";
+$GLOBALS['messagesTable'] = "understandingMessages";
 $GLOBALS['dbConnect'] = new DbConnect();
 
 class Course implements JsonSerializable
 {
+    private $questions = [];
+    private $t_id;
+    private $owner_id;
+    private $description;
+
+    public static function postMessage($message)
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        $studentId = $message['student_id'];
+        $teacherId = $message['teacher_id'];
+        $messageText = $message['message'];
+        $query = "INSERT INTO " . $GLOBALS['messagesTable'] . " (student_id, teacher_id, message) VALUES ('$studentId','$teacherId','$messageText')";
+        $inserted = mysqli_query($db, $query);
+        mysqli_close($db);
+        if ($inserted) {
+            return new CourseServiceResponse(true, "posted message successfully", null);
+        } else {
+            return new CourseServiceResponse(false, "unable to post message", null);
+        }
+    }
+
+    public static function getMessages($teacherId)
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        $query = "SELECT * FROM " . $GLOBALS['messagesTable'] . " WHERE teacher_id = " . $teacherId . " AND seen = 0";
+        $result = mysqli_query($db, $query);
+
+        if ($result->num_rows > 0) {
+            $messages = [];
+            while ($row = $result->fetch_assoc()) {
+                $message = array("m_id" => $row['m_id'], "student_id" => $row['student_id'], "teacher_id" => $row['teacher_id'], "message" => $row['message'], "seen" => $row['seen']);
+                $messages[] = $message;
+            }
+            return new CourseServiceResponse(true, "success", $messages);
+        } else {
+            return new CourseServiceResponse(false, "no messages available", null);
+        }
+    }
+
     public static function postResult($result)
     {
         $db = $GLOBALS['dbConnect']->getDb();
@@ -36,12 +76,7 @@ class Course implements JsonSerializable
         if ($result->num_rows > 0) {
             $results = [];
             while ($row = $result->fetch_assoc()) {
-                $results[] = array(
-                    'r_id' => $row['r_id'],
-                    'owner_id' => $row['owner_id'],
-                    't_id' => $row['t_id'],
-                    'score' => $row['score']
-                );
+                $results[] = array('r_id' => $row['r_id'], 'owner_id' => $row['owner_id'], 't_id' => $row['t_id'], 'score' => $row['score']);
             }
             return new CourseServiceResponse(true, "fetched results", $results);
         } else {
@@ -81,28 +116,12 @@ class Course implements JsonSerializable
         $answers = [];
         if ($longResult->num_rows > 0) {
             while ($row = $longResult->fetch_assoc()) {
-                $answers[] = array(
-                    'a_id' => $row['a_id'],
-                    'description' => $row['description'],
-                    'owner_id' => $row['owner_id'],
-                    'a_order' => $row['a_order'],
-                    'a_type' => "long",
-                    'q_id' => $row['q_id'],
-                    't_id' => $row['t_id']
-                );
+                $answers[] = array('a_id' => $row['a_id'], 'description' => $row['description'], 'owner_id' => $row['owner_id'], 'a_order' => $row['a_order'], 'a_type' => "long", 'q_id' => $row['q_id'], 't_id' => $row['t_id']);
             }
         }
         if ($multiResult->num_rows > 0) {
             while ($row = $longResult->fetch_assoc()) {
-                $answers[] = array(
-                    'a_id' => $row['a_id'],
-                    'description' => $row['description'],
-                    'owner_id' => $row['owner_id'],
-                    'a_order' => $row['a_order'],
-                    'a_type' => 'multi',
-                    'q_id' => $row['q_id'],
-                    't_id' => $row['t_id']
-                );
+                $answers[] = array('a_id' => $row['a_id'], 'description' => $row['description'], 'owner_id' => $row['owner_id'], 'a_order' => $row['a_order'], 'a_type' => 'multi', 'q_id' => $row['q_id'], 't_id' => $row['t_id']);
             }
         }
         if (isset($answers)) {
@@ -173,87 +192,13 @@ class Course implements JsonSerializable
         if ($result->num_rows > 0) {
             $courses = [];
             while ($row = $result->fetch_assoc()) {
-                $courses[] = array(
-                    't_id' => $row['t_id'],
-                    'owner_id' => $row['owner_id'],
-                    'description' => $row['description']
-                );
+                $courses[] = array('t_id' => $row['t_id'], 'owner_id' => $row['owner_id'], 'description' => $row['description']);
             }
             return new CourseServiceResponse(true, "fetched courses successfully", $courses);
         } else {
             return new CourseServiceResponse(false, "error happened while getting courses", null);
         }
     }
-
-    /**
-     * @return array
-     */
-    public function getQuestions()
-    {
-        return $this->questions;
-    }
-
-    /**
-     * @param array $questions
-     */
-    public function setQuestions($questions)
-    {
-        $this->questions = $questions;
-    }
-
-
-    /**
-     * @return mixed
-     */
-    public function getTId()
-    {
-        return $this->t_id;
-    }
-
-    /**
-     * @param mixed $t_id
-     */
-    public function setTId($t_id)
-    {
-        $this->t_id = $t_id;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getOwnerId()
-    {
-        return $this->owner_id;
-    }
-
-    /**
-     * @param mixed $owner_id
-     */
-    public function setOwnerId($owner_id)
-    {
-        $this->owner_id = $owner_id;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getDescription()
-    {
-        return $this->description;
-    }
-
-    /**
-     * @param mixed $description
-     */
-    public function setDescription($description)
-    {
-        $this->description = $description;
-    }
-
-    private $questions = [];
-    private $t_id;
-    private $owner_id;
-    private $description;
 
     public static function createTest(Course $course)
     {
@@ -291,31 +236,86 @@ class Course implements JsonSerializable
 
     }
 
+    /**
+     * @return mixed
+     */
+    public function getOwnerId()
+    {
+        return $this->owner_id;
+    }
+
+    /**
+     * @param mixed $owner_id
+     */
+    public function setOwnerId($owner_id)
+    {
+        $this->owner_id = $owner_id;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getDescription()
+    {
+        return $this->description;
+    }
+
+    /**
+     * @param mixed $description
+     */
+    public function setDescription($description)
+    {
+        $this->description = $description;
+    }
+
+    /**
+     * @return array
+     */
+    public function getQuestions()
+    {
+        return $this->questions;
+    }
+
+    /**
+     * @param array $questions
+     */
+    public function setQuestions($questions)
+    {
+        $this->questions = $questions;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getTId()
+    {
+        return $this->t_id;
+    }
+
+    /**
+     * @param mixed $t_id
+     */
+    public function setTId($t_id)
+    {
+        $this->t_id = $t_id;
+    }
+
     public static function getInstance($data): Course
     {
         $course = new Course();
-        if (isset($data['t_id']))
-            $course->setTId($data['t_id']);
-        if (isset($data['owner_id']))
-            $course->setOwnerId($data['owner_id']);
+        if (isset($data['t_id'])) $course->setTId($data['t_id']);
+        if (isset($data['owner_id'])) $course->setOwnerId($data['owner_id']);
 
-        if (isset($data['description']))
-            $course->setDescription($data['description']);
+        if (isset($data['description'])) $course->setDescription($data['description']);
         if (isset($data['questions'])) {
             foreach ($data['questions'] as $questionData) {
                 $question = new Question();
-                if (isset($questionData['q_id']))
-                    $question->setQId($questionData['q_id']);
-                if (isset($questionData['t_id']))
-                    $question->setTId($questionData['t_id']);
-                if (isset($questionData['solution']))
-                    $question->setSolution($questionData['solution']);
-                if (isset($questionData['description']))
-                    $question->setDescription($questionData['description']);
-                if (isset($questionData['q_order']))
-                    $question->setQOrder($questionData['q_order']);
-                if (isset($questionData['choices']))
-                    $question->setChoices($questionData['choices']);
+                if (isset($questionData['q_id'])) $question->setQId($questionData['q_id']);
+                if (isset($questionData['t_id'])) $question->setTId($questionData['t_id']);
+                if (isset($questionData['solution'])) $question->setSolution($questionData['solution']);
+                if (isset($questionData['description'])) $question->setDescription($questionData['description']);
+                if (isset($questionData['q_order'])) $question->setQOrder($questionData['q_order']);
+                if (isset($questionData['choices'])) $question->setChoices($questionData['choices']);
                 $course->questions[] = $question;
             }
         }
@@ -326,18 +326,21 @@ class Course implements JsonSerializable
 
     public function jsonSerialize(): array
     {
-        return [
-            't_id' => $this->t_id,
-            'owner_id' => $this->owner_id,
-            'description' => $this->description,
-            'questions' => $this->questions,
-        ];
+        return ['t_id' => $this->t_id, 'owner_id' => $this->owner_id, 'description' => $this->description, 'questions' => $this->questions,];
     }
 }
 
 class Question implements JsonSerializable
 {
 
+
+    private $q_id;
+    private $t_id;
+    private $q_order;
+    private $longQuestion = true;
+    private $description;
+    private $solution;
+    private $choices = [];
 
     /**
      * @return mixed
@@ -355,7 +358,6 @@ class Question implements JsonSerializable
         $this->q_order = $q_order;
     }
 
-
     /**
      * @return bool
      */
@@ -371,7 +373,6 @@ class Question implements JsonSerializable
     {
         $this->longQuestion = $longQuestion;
     }
-
 
     /**
      * @return mixed
@@ -404,7 +405,6 @@ class Question implements JsonSerializable
     {
         $this->t_id = $t_id;
     }
-
 
     /**
      * @return mixed
@@ -455,24 +455,9 @@ class Question implements JsonSerializable
         $this->longQuestion = false;
     }
 
-    private $q_id;
-    private $t_id;
-    private $q_order;
-    private $longQuestion = true;
-    private $description;
-    private $solution;
-    private $choices = [];
-
     public function jsonSerialize(): array
     {
-        return [
-            't_id' => $this->t_id,
-            'q_id' => $this->q_id,
-            'q_order' => $this->q_order,
-            'description' => $this->description,
-            'solution' => $this->solution,
-            'choices' => $this->choices
-        ];
+        return ['t_id' => $this->t_id, 'q_id' => $this->q_id, 'q_order' => $this->q_order, 'description' => $this->description, 'solution' => $this->solution, 'choices' => $this->choices];
     }
 }
 

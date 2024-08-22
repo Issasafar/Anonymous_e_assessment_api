@@ -111,3 +111,26 @@ Content-Type: application/json
     "score": 90
   }
 }
+###
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "POST_MESSAGE",
+  "data": {
+    "student_id": 1,
+    "teacher_id": 1,
+    "message": "i did not get the idea"
+  }
+}
+###
+GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "GET_MESSAGES",
+  "data": {
+    "teacher_id" : 1
+  }
+}
+

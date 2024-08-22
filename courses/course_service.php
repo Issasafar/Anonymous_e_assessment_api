@@ -21,13 +21,14 @@ enum Actions: string
     case POST_RESULT = "POST_RESULT";
     case POST_ANSWERS = "POST_ANSWERS";
     case GET_ANSWERS = "GET_ANSWERS";
+    case GET_MESSAGES = "GET_MESSAGES";
+    case POST_MESSAGE = "POST_MESSAGE";
 
 }
 
 //##################################################
 
-if (isset($_SERVER['CONTENT_TYPE']))
-    $contentType = $_SERVER['CONTENT_TYPE'];
+if (isset($_SERVER['CONTENT_TYPE'])) $contentType = $_SERVER['CONTENT_TYPE'];
 
 if (str_contains($contentType, 'application/json')) {
     try {
@@ -46,6 +47,10 @@ if (str_contains($contentType, 'application/json')) {
                 $result = $contents['data'];
                 $response = Course::postResult($result);
                 echo json_encode($response);
+            } elseif ($action === Actions::POST_MESSAGE->value) {
+                $message = $contents["data"];
+                $response = Course::postMessage($message);
+                echo json_encode($response);
             }
         } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $action = $contents['action'];
@@ -54,8 +59,7 @@ if (str_contains($contentType, 'application/json')) {
                 echo json_encode($response);
             } elseif ($action === Actions::GET_QUESTIONS->value) {
                 $testId = $contents['data']['test_id'];
-                if (isset($ownerId))
-                    $ownerId = $contents['data']['owner_id'];
+                if (isset($ownerId)) $ownerId = $contents['data']['owner_id'];
                 $response = Course::fetchQuestions($testId, null);
                 echo json_encode($response);
             } elseif ($action === Actions::GET_ANSWERS->value) {
@@ -67,15 +71,22 @@ if (str_contains($contentType, 'application/json')) {
                 $testId = $contents['data']['test_id'];
                 $response = Course::getResults($testId);
                 echo json_encode($response);
+            } elseif ($action === Actions::GET_MESSAGES->value) {
+                $teacherId = $contents['data']['teacher_id'];
+                $response = Course::getMessages($teacherId);
+                echo json_encode($response);
+
+            } else {
+                echo json_encode(new CourseServiceResponse(false, "invalid request", null));
             }
 
 
         }
     } catch (Exception $exception) {
-        echo json_encode(new CourseServiceResponse(false), "error happened: " . $exception->getMessage(), null);
+        echo json_encode(new CourseServiceResponse(false, "error happened: " . $exception->getMessage(), null));
     }
 } else {
-    echo json_encode(new CourseServiceResponse(false), "invalid content", null);
+    echo json_encode(new CourseServiceResponse(false, "invalid content", null));
 }
 
 
