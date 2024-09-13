@@ -8,6 +8,7 @@ $GLOBALS['multipleChoiceAnswerTable'] = "multipleChoiceAnswers";
 $GLOBALS['resultTable'] = "results";
 $GLOBALS['testsTable'] = "tests";
 $GLOBALS['messagesTable'] = "understandingMessages";
+$GLOBALS['studentsTable'] = "students";
 $GLOBALS['dbConnect'] = new DbConnect();
 
 class Course implements JsonSerializable
@@ -16,6 +17,69 @@ class Course implements JsonSerializable
     private $t_id;
     private $owner_id;
     private $description;
+    public static function getAllCourses(){
+        $db = $GLOBALS['dbConnect']->getDb();
+        $query = "SELECT * FROM ".$GLOBALS['testsTable'];
+        $fetched = mysqli_query($db, $query);
+        if ($fetched) {
+            $courses = [];
+            while ($row = $fetched->fetch_assoc()) {
+                $courses[] = array(
+                    "t_id" => $row['t_id'],
+                    "owner_id"=> $row['owner_id'],
+                    "description"=>$row['description']
+                );
+            }
+            return new CourseServiceResponse(true, "fetched all courses", $courses);
+
+        } else {
+            return new CourseServiceResponse(false, "No courses Available", null);
+        }
+    }
+    public static function markSeenMessages($lastMessageId, $teacherId)
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        $query = "UPDATE " . $GLOBALS['messagesTable'] . " SET seen = 1 WHERE m_id <= " .$lastMessageId." AND teacher_id = ".$teacherId;
+        $updated = mysqli_query($db, $query);
+        if ($updated) {
+           return new CourseServiceResponse(true,"messages will not appear here in the next time",null);
+        }else{
+            return new CourseServiceResponse(false, "error in updating field seen", null);
+        }
+
+    }
+
+    public static function getPrevTests($studentId)
+    {
+        $retrieveCoursesQuery = "SELECT " . $GLOBALS['testsTable'] . ".* " .
+            "FROM " . $GLOBALS['resultTable'] . " " .
+            "INNER JOIN " . $GLOBALS['testsTable'] . " " .
+            "ON " . $GLOBALS['resultTable'] . ".t_id = " . $GLOBALS['testsTable'] . ".t_id " .
+            "WHERE " . $GLOBALS['resultTable'] . ".owner_id = " . $studentId." ORDER BY r_id DESC ";
+
+        return self::fetchCoursesFromDataBase($retrieveCoursesQuery);
+
+    }
+
+    /**
+     * @param string $retrieveCoursesQuery
+     * @return CourseServiceResponse
+     */
+    public static function fetchCoursesFromDataBase(string $retrieveCoursesQuery): CourseServiceResponse
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        $result = mysqli_query($db, $retrieveCoursesQuery);
+        mysqli_close($db);
+        if ($result->num_rows > 0) {
+            $courses = [];
+            while ($row = $result->fetch_assoc()) {
+                $courses[] = array('t_id' => $row['t_id'], 'owner_id' => $row['owner_id'], 'description' => $row['description']);
+            }
+            return new CourseServiceResponse(true, "fetched courses successfully", $courses);
+        } else {
+            return new CourseServiceResponse(false, "No previous courses have fetched", null);
+        }
+    }
 
     public static function postMessage($message)
     {
@@ -23,11 +87,11 @@ class Course implements JsonSerializable
         $studentId = $message['student_id'];
         $teacherId = $message['teacher_id'];
         $messageText = $message['message'];
-        $query = "INSERT INTO " . $GLOBALS['messagesTable'] . " (student_id, teacher_id, message) VALUES ('$studentId','$teacherId','$messageText')";
+        $query = "INSERT INTO " . $GLOBALS['messagesTable'] . " (student_id, teacher_id, message) VALUES ('$studentId','$teacherId',\"'$messageText'\")";
         $inserted = mysqli_query($db, $query);
         mysqli_close($db);
         if ($inserted) {
-            return new CourseServiceResponse(true, "posted message successfully", null);
+            return new CourseServiceResponse(true, "The message has sent successfully", null);
         } else {
             return new CourseServiceResponse(false, "unable to post message", null);
         }
@@ -36,15 +100,21 @@ class Course implements JsonSerializable
     public static function getMessages($teacherId)
     {
         $db = $GLOBALS['dbConnect']->getDb();
-        $query = "SELECT * FROM " . $GLOBALS['messagesTable'] . " WHERE teacher_id = " . $teacherId . " AND seen = 0";
+        $query = "SELECT " . $GLOBALS['messagesTable'] . ".*, " . $GLOBALS['studentsTable'] . ".sign " . " FROM " . $GLOBALS['studentsTable'] . " INNER JOIN " . $GLOBALS['messagesTable'] . " ON " . $GLOBALS['studentsTable'] . ".id = " . $GLOBALS['messagesTable'] . ".student_id WHERE teacher_id = " . $teacherId . " AND seen = 0";
         $result = mysqli_query($db, $query);
 
         if ($result->num_rows > 0) {
             $messages = [];
             while ($row = $result->fetch_assoc()) {
-                $message = array("m_id" => $row['m_id'], "student_id" => $row['student_id'], "teacher_id" => $row['teacher_id'], "message" => $row['message'], "seen" => $row['seen']);
+
+                $message = array("m_id" => $row['m_id'], "student_id" => $row['student_id'], "teacher_id" => $row['teacher_id'], "message" => $row['message'], "seen" => $row['seen'], "student_name" => $row['sign'], "fetched" => $row['fetched']);
                 $messages[] = $message;
+                $mId = $row['m_id'];
+                $teacherId = $row['teacher_id'];
             }
+            $updateQuery = "UPDATE " . $GLOBALS['messagesTable'] . " SET fetched = 1 WHERE m_id <= " . $mId . " AND teacher_id = " . $teacherId;
+            $updated = mysqli_query($db, $updateQuery);
+
             return new CourseServiceResponse(true, "success", $messages);
         } else {
             return new CourseServiceResponse(false, "no messages available", null);
@@ -57,7 +127,8 @@ class Course implements JsonSerializable
         $testId = $result['t_id'];
         $ownerId = $result['owner_id'];
         $score = $result['score'];
-        $query = "INSERT INTO " . $GLOBALS['resultTable'] . " (owner_id, t_id, score) VALUES ('$ownerId','$testId','$score')";
+        $ownerName = $result['owner_name'];
+        $query = "INSERT INTO " . $GLOBALS['resultTable'] . " (owner_id, t_id,owner_name, score) VALUES ('$ownerId','$testId','$ownerName','$score')";
         $inserted = mysqli_query($db, $query);
         if ($inserted) {
             return new CourseServiceResponse(true, "successfully posted a result", null);
@@ -76,7 +147,23 @@ class Course implements JsonSerializable
         if ($result->num_rows > 0) {
             $results = [];
             while ($row = $result->fetch_assoc()) {
-                $results[] = array('r_id' => $row['r_id'], 'owner_id' => $row['owner_id'], 't_id' => $row['t_id'], 'score' => $row['score']);
+                $results[] = array('r_id' => $row['r_id'], 'owner_id' => $row['owner_id'], 'owner_name' => $row['owner_name'], 't_id' => $row['t_id'], 'score' => $row['score']);
+            }
+            return new CourseServiceResponse(true, "fetched results", $results);
+        } else {
+            return new CourseServiceResponse(false, "no results available", null);
+        }
+    }
+    public static function getAllResults($ownerId)
+    {
+        $db = $GLOBALS['dbConnect']->getDb();
+        $query = "SELECT * FROM " . $GLOBALS['resultTable'] . " WHERE owner_id = " . $ownerId." ORDER BY r_id DESC";
+        $result = mysqli_query($db, $query);
+        mysqli_close($db);
+        if ($result->num_rows > 0) {
+            $results = [];
+            while ($row = $result->fetch_assoc()) {
+                $results[] = array('r_id' => $row['r_id'], 'owner_id' => $row['owner_id'], 'owner_name' => $row['owner_name'], 't_id' => $row['t_id'], 'score' => $row['score']);
             }
             return new CourseServiceResponse(true, "fetched results", $results);
         } else {
@@ -93,7 +180,7 @@ class Course implements JsonSerializable
             $aOrder = $answer['a_order'];
             $qId = $answer['q_id'];
             $tId = $answer['t_id'];
-            if ($answer['a_type'] === "long") {
+            if ($answer['a_type'] === "LONG") {
                 $query = "INSERT INTO " . $GLOBALS['longAnswerTable'] . " (owner_id, t_id, q_id, description, a_order) VALUES ( '$ownerId', '$tId', '$qId', '$description', '$aOrder')";
             } else {
                 $query = "INSERT INTO " . $GLOBALS['multipleChoiceAnswerTable'] . " (owner_id, t_id, q_id, description, a_order) VALUES ( '$ownerId', '$tId', '$qId', '$description', '$aOrder')";
@@ -108,20 +195,20 @@ class Course implements JsonSerializable
     public static function getAnswers($testId, $ownerId)
     {
         $db = $GLOBALS['dbConnect']->getDb();
-        $queryL = "SELECT * FROM " . $GLOBALS['longAnswerTable'] . " WHERE t_id = " . $testId . " AND owner_id = " . $ownerId;
-        $queryM = "SELECT * FROM " . $GLOBALS['multipleChoiceAnswerTable'] . " WHERE t_id = " . $testId . " AND owner_id = " . $ownerId;
-        $longResult = mysqli_query($db, $queryL);
+        $queryL = "SELECT * FROM " . $GLOBALS['longAnswerTable'] . " WHERE t_id = " . $testId . " AND owner_id = " . $ownerId." ORDER BY a_id DESC";
+        $queryM = "SELECT * FROM " . $GLOBALS['multipleChoiceAnswerTable'] . " WHERE t_id = " . $testId . " AND owner_id = " . $ownerId." ORDER BY a_id DESC";
         $multiResult = mysqli_query($db, $queryM);
+        $longResult = mysqli_query($db, $queryL);
         mysqli_close($db);
         $answers = [];
         if ($longResult->num_rows > 0) {
             while ($row = $longResult->fetch_assoc()) {
-                $answers[] = array('a_id' => $row['a_id'], 'description' => $row['description'], 'owner_id' => $row['owner_id'], 'a_order' => $row['a_order'], 'a_type' => "long", 'q_id' => $row['q_id'], 't_id' => $row['t_id']);
+                $answers[] = array('a_id' => $row['a_id'], 'description' => $row['description'], 'owner_id' => $row['owner_id'], 'a_order' => $row['a_order'], 'a_type' => "LONG", 'q_id' => $row['q_id'], 't_id' => $row['t_id']);
             }
         }
         if ($multiResult->num_rows > 0) {
-            while ($row = $longResult->fetch_assoc()) {
-                $answers[] = array('a_id' => $row['a_id'], 'description' => $row['description'], 'owner_id' => $row['owner_id'], 'a_order' => $row['a_order'], 'a_type' => 'multi', 'q_id' => $row['q_id'], 't_id' => $row['t_id']);
+            while ($row = $multiResult->fetch_assoc()) {
+                $answers[] = array('a_id' => $row['a_id'], 'description' => $row['description'], 'owner_id' => $row['owner_id'], 'a_order' => $row['a_order'], 'a_type' => "MULTI", 'q_id' => $row['q_id'], 't_id' => $row['t_id']);
             }
         }
         if (isset($answers)) {
@@ -150,31 +237,37 @@ class Course implements JsonSerializable
         $questions = [];
         if ($longResult->num_rows > 0) {
             while ($row = $longResult->fetch_assoc()) {
-                $temp = new Question();
-                $temp->setTId($row['t_id']);
-                $temp->setQId($row['q_id']);
-                $temp->setDescription($row['description']);
-                $temp->setSolution($row['solution']);
-                $temp->setQOrder($row['q_order']);
-                $temp->setLongQuestion(true);
+                $temp = array(
+                   "t_id"=>$row['t_id'] ,
+                    "q_id"=>$row['q_id'],
+                    "description"=>$row['description'],
+                    "q_order"=>$row['q_order'],
+                    "type"=>"LONG",
+                    "solution"=>$row['solution']
+                );
                 $questions[] = $temp;
             }
         }
         if ($multiResult->num_rows > 0) {
             while ($row = $multiResult->fetch_assoc()) {
-                $temp = new Question();
-                $temp->setTId($row['t_id']);
-                $temp->setQId($row['q_id']);
-                $temp->setDescription($row['description']);
-                $temp->setChoices(array($row['choice1'], $row['choice2'], $row['choice3']));
-                $temp->setSolution($row['solution']);
-                $temp->setQOrder($row['q_order']);
-                $temp->setLongQuestion(true);
+                $temp = array(
+                    "t_id"=>$row['t_id'] ,
+                    "q_id"=>$row['q_id'],
+                    "description"=>$row['description'],
+                    "q_order"=>$row['q_order'],
+                    "choices"=>array(
+                        $row['choice1'],
+                        $row['choice2'],
+                        $row['choice3']
+                    ),
+                    "type"=>"MULTI",
+                    "solution"=>$row['solution']
+                );
                 $questions[] = $temp;
             }
         }
         usort($questions, function ($a, $b) {
-            return $a->getQOrder() <=> $b->getQOrder();
+            return $a['q_order'] <=> $b['q_order'];
         });
         if (isset($questions)) {
             return new CourseServiceResponse(true, "successfully fetched questions", $questions);
@@ -183,21 +276,15 @@ class Course implements JsonSerializable
         }
     }
 
-    public static function getAvailableCourses()
+    public static function getAvailableCourses($ownerId)
     {
-        $retrieveCoursesQuery = "SELECT * FROM " . $GLOBALS['testsTable'];
-        $db = $GLOBALS['dbConnect']->getDb();
-        $result = mysqli_query($db, $retrieveCoursesQuery);
-        mysqli_close($db);
-        if ($result->num_rows > 0) {
-            $courses = [];
-            while ($row = $result->fetch_assoc()) {
-                $courses[] = array('t_id' => $row['t_id'], 'owner_id' => $row['owner_id'], 'description' => $row['description']);
-            }
-            return new CourseServiceResponse(true, "fetched courses successfully", $courses);
+        if (isset($ownerId)) {
+            $retrieveCoursesQuery = "SELECT * FROM " . $GLOBALS['testsTable'] . " WHERE owner_id = " . $ownerId;
         } else {
-            return new CourseServiceResponse(false, "error happened while getting courses", null);
+            $retrieveCoursesQuery = "SELECT * FROM " . $GLOBALS['testsTable'];
         }
+
+        return self::fetchCoursesFromDataBase($retrieveCoursesQuery);
     }
 
     public static function createTest(Course $course)
@@ -207,6 +294,13 @@ class Course implements JsonSerializable
         $_description = $course->getDescription();
         $testQuery = "insert into " . $GLOBALS['testsTable'] . " (owner_id, description) values ('$_owner_id','$_description')";
         $testCreated = mysqli_query($db, $testQuery);
+        $tIdQuery = "SELECT * FROM " . $GLOBALS['testsTable'] . " WHERE description = '" . $course->getDescription() . "' LIMIT 1";
+        $result = mysqli_query($db, $tIdQuery);
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $tId = $row['t_id'];
+            $course->setTId($tId);
+        }
         foreach ($course->getQuestions() as $question) {
             $__t_id = $question->getTId();
             $__description = $question->getDescription();
@@ -298,6 +392,9 @@ class Course implements JsonSerializable
     public function setTId($t_id)
     {
         $this->t_id = $t_id;
+        foreach ($this->questions as $question) {
+            $question->setTId($this->getTId());
+        }
     }
 
     public static function getInstance($data): Course

@@ -2,16 +2,14 @@ POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_S
 Content-Type: application/json
 
 {
-  "action": "CREATE_TEST",
+  "action": "POST_TEST",
   "data": {
-    "t_id": 1,
     "owner_id": 2,
-    "description": "programming course",
+    "description": "paint course",
     "questions": [
       {
         "solution": "2",
         "q_id": 1,
-        "t_id": 1,
         "description": "what is 2!",
         "q_order": 1
       },
@@ -23,7 +21,6 @@ Content-Type: application/json
           "python"
         ],
         "q_id": 1,
-        "t_id": 1,
         "description": "which is best",
         "q_order": 2
       }
@@ -32,15 +29,18 @@ Content-Type: application/json
 }
 
 ###
-GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
 Content-Type: application/json
 
 {
-  "action": "GET_COURSES"
+  "action": "GET_COURSES",
+  "data": {
+    "owner_id": 2
+  }
 }
 
 ###
-GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
 Content-Type: application/json
 
 {
@@ -50,15 +50,35 @@ Content-Type: application/json
     "owner_id": 2
   }
 }
+###
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "GET_PREV_TESTS",
+  "data": {
+    "student_id": 28
+  }
+}
 
 ###
-GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
 Content-Type: application/json
 
 {
   "action": "GET_RESULTS",
   "data": {
-    "test_id": 1
+    "test_id": 2
+  }
+}
+###
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "GET_ALL_RESULTS",
+  "data": {
+    "student_id": 28
   }
 }
 
@@ -73,30 +93,30 @@ Content-Type: application/json
     {
       "t_id": 1,
       "q_id": 1,
-      "description": "9",
+      "description": "909",
       "owner_id": 1,
       "a_order": 1,
-      "a_type": "mutli"
+      "a_type": "MUTLI"
     },
     {
       "t_id": 1,
       "q_id": 1,
-      "description": "python",
+      "description": "long ansser",
       "owner_id": 1,
       "a_order": 2,
-      "a_type": "long"
+      "a_type": "LONG"
     }
   ]
 }
 ###
-GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
 Content-Type: application/json
 
 {
   "action": "GET_ANSWERS",
   "data": {
-    "t_id": 1,
-    "owner_id": 1
+    "test_id": 21,
+    "owner_id": 28
   }
 }
 ###
@@ -107,8 +127,9 @@ Content-Type: application/json
   "action": "POST_RESULT",
   "data": {
     "owner_id": 1,
-    "t_id": 1,
-    "score": 90
+    "t_id": 16,
+    "score": 60,
+    "owner_name": "test"
   }
 }
 ###
@@ -120,17 +141,55 @@ Content-Type: application/json
   "data": {
     "student_id": 1,
     "teacher_id": 1,
-    "message": "i did not get the idea"
+    "message": "i did 'not get the idea"
   }
 }
 ###
-GET http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
 Content-Type: application/json
 
 {
   "action": "GET_MESSAGES",
   "data": {
-    "teacher_id" : 1
+    "teacher_id" : 10
   }
 }
+###
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
 
+{
+  "action": "GET_PREV_TESTS",
+  "data": {
+    "student_id" : 28
+  }
+}
+###
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "MARK_SEEN",
+  "data": {
+    "teacher_id": 1,
+    "m_id": 3
+  }
+}
+###
+POST http://localhost/Anonymous_e_assessment/register.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "name": "student3",
+  "sign": "hacker",
+  "email": "student_4@gmail.com",
+  "password": "student"
+}
+###
+POST http://localhost/Anonymous_e_assessment/courses/course_service.php?XDEBUG_SESSION_START=PHPSTORM
+Content-Type: application/json
+
+{
+  "action": "GET_ALL_COURSES",
+  "data": null
+}

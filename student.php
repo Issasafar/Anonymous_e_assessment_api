@@ -18,7 +18,14 @@ class Student extends User
             $isValid = $this->isValidEmail($email);
             if ($isValid) {
                 $query = "insert into " . $this->db_table . " (name, email, password, sign) values ('$name','$email','$password','$sign')";
-                $inserted = mysqli_query($this->db->getDb(), $query);
+                try {
+
+                    $inserted = mysqli_query($this->db->getDb(), $query);
+                } catch (Exception $e) {
+                    $json['success'] = false;
+                    $json['message'] = "User with this name already exist";
+                    return $json;
+                }
                 if ($inserted == 1) {
                     $json['success'] = true;
                     $json['message'] = "Successfully registered the user";

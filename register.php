@@ -15,6 +15,7 @@ $contentType = $_SERVER['CONTENT_TYPE'];
             exit;
         }
         $data = json_decode($json_data, true);
+        //todo: uncomment
         $data = json_decode($data, true);
 
 
